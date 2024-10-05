@@ -40,6 +40,8 @@ if __name__ == "__main__":
     # Prompt the user for the target word
     target_word = input("Enter the word or content you want to search for: ")
 
+    query = f'"{target_word}" -site:onlyfans.com -site:tiktok.com -site:twitch.tv -site:tracker.gg -site:youtube.com -site:linktr.ee -site:cash.app -site:threads.net -site:fansmetrics.com -site:twitter.com -site:fansly.com -site:sotwe.com -site:x.com'
+
 # Replace with your Google API key and Custom Search Engine ID
     api_key = "AIzaSyDQMyqOxmS9xk-Urqnlugci_xbQZ2jmkic"
     cse_id = "77887bf79437a4026"
@@ -55,7 +57,7 @@ if __name__ == "__main__":
         print(f"Fetching results {start_index} to {start_index + results_per_page - 1}")
         
         # Perform the Google search with pagination
-        results = google_search(target_word, api_key, cse_id, num_results=results_per_page, start_index=start_index)
+        results = google_search(query, api_key, cse_id, num_results=results_per_page, start_index=start_index)
         
         # Write the search results to a file
         if results:
