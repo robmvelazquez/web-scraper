@@ -1,0 +1,109 @@
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin
+import xml.etree.ElementTree as ET
+import time
+
+# A set to keep track of visited URLs
+visited_urls = set()
+
+# Function to crawl a website and search for content
+def crawl_website(base_url, target_word, max_pages=10000):
+	# First, try to fetch the sitemap or sitemap index
+	all_sitemap_urls = fetch_sitemaps(base_url)
+
+	if not all_sitemap_urls:
+		print("No sitemaps found, exiting.")
+		return
+
+	# Crawl URLs from all sitemaps
+	for sitemap_url in all_sitemap_urls:
+		sitemap_urls = fetch_sitemap_urls(sitemap_url)
+		for url in sitemap_urls:
+			if len(visited_urls) >= max_pages:
+				break
+			crawl_page(url, base_url, target_word)
+
+	print(f"Crawling complete. Visited {len(visited_urls)} pages.")
+
+# Function to fetch multiple sitemaps (sitemap index)
+def fetch_sitemaps(base_url):
+	sitemap_url = urljoin(base_url, "/sitemap.xml")
+	response = requests.get(sitemap_url)
+
+	if response.status_code != 200:
+		print(f"Failed to retrieve sitemap index from {sitemap_url}. Status code: {response.status_code}")
+		return []
+
+	sitemap_urls = []
+
+	try:
+		soup = BeautifulSoup(response.content, "xml")
+		# Check if it's a sitemap index (contains <sitemap> elements pointing to other sitemaps)
+		sitemaps = soup.find_all("sitemap")
+		if sitemaps:
+			# If it's a sitemap index, extract each individual sitemap url
+			for sitemap in sitemaps:
+				loc = sitemap.find("loc").text
+				sitemap_urls.append(loc)
+			print(f"Found {len(sitemap_urls)} individual sitemaps.")
+		else:
+			# If it's a regular sitemap, return just this URL
+			return [sitemap_url]
+
+	except Exception as e:
+		print(f"Error parsing sitemap index: {e}")
+
+	return sitemap_urls
+
+# Function to fetch and parse a sitemap, returning all URLs
+def fetch_sitemap_urls(sitemap_url):
+	response = requests.get(sitemap_url)
+	sitemap_urls = []
+
+	if response.status_code != 200:
+		print(f"Failed to retrieve sitemap from {sitemap_url}. Status code: {response.status_code}")
+		return []
+
+	try:
+		soup = BeautifulSoup(response.content, "xml")
+		for loc in soup.find_all("loc"):
+			sitemap_urls.append(loc.text)
+		print(f"Found {len(sitemap_urls)} URLS in sitemap: {sitemap_url}")
+	except Exception as e:
+		print(f"Error parsing sitemap {sitemap_url}: {e}")
+
+	return sitemap_urls
+
+# Function to crawl a single page
+def crawl_page(current_url, base_url, target_word):
+	if current_url in visited_urls:
+		return
+
+	try:
+		response = requests.get(current_url)
+		visited_urls.add(current_url) # Mark page as visited
+	
+		if response.status_code == 200:
+			soup = BeautifulSoup(response.content, "lxml")
+			print(f"Crawling {current_url}")
+
+			# Search for the target word in the page content
+			if target_word.lower() in soup.text.lower():
+				print(f"Found '{target_word}' on {current_url}")
+
+			time.sleep(1) # Avoid making requests too quickly
+
+		else:
+			print(f"Failed to retrieve {current_url}. Status code: {response.status_code}")
+
+	except Exception as e:
+		print(f"Error while crawling {current_url}: {e}")
+
+# Start crawling
+if __name__ == "__main__":
+	base_url = "https://simpcity.su"
+	target_word = input("Enter the word or content you want to search for: ")
+	crawl_website(base_url, target_word)
+	
+
